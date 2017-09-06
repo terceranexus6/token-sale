@@ -68,28 +68,91 @@ contract DecisionToken is MintableToken {
   * @dev Constructor for the DecisionToken.
   * Assign the tokenReserve to Horizon State.
   */
-  function DecisionToken()
-    MintableToken()
-    {
-      owner = msg.sender;
-      totalSupply = tokenReserve;
-      balances[owner] = totalSupply;
-      Mint(owner, totalSupply);
-    }
+  function DecisionToken() MintableToken() {
+    owner = msg.sender;
+    totalSupply = tokenReserve;
+    balances[owner] = totalSupply;
+    Mint(owner, totalSupply);
+  }
 
   /**
    * @dev Function to mint tokens
+   * Override StandardToken to return true/false rather than throw
    * @param _to The address that will receive the minted tokens.
    * @param _amount The amount of tokens to mint.
    * @return A boolean that indicates if the operation was successful.
    */
-  function mint(address _to, uint256 _amount) onlyOwner canMint returns (bool) {
-    require (totalSupply.add(_amount) <= tokenCap);
+  function mint(address _to, uint256 _amount) onlyOwner canMint returns (bool success) {
+    if (totalSupply.add(_amount) > tokenCap) {
+      return false;
+    }
     totalSupply = totalSupply.add(_amount);
     balances[_to] = balances[_to].add(_amount);
     Mint(_to, _amount);
     Transfer(0x0, owner, _amount);
     Transfer(owner, _to, _amount);
+    return true;
+  }
+
+  /**
+   * @dev Transfer tokens from one address to another
+   * Override StandardToken to return true/false rather than throw
+   * @param _from address The address which you want to send tokens from
+   * @param _to address The address which you want to transfer to
+   * @param _value uint256 the amount of tokens to be transferred
+   */
+  function transferFrom(address _from, address _to, uint256 _value) returns (bool success) {
+    if (_to == address(0)) {
+      return false;
+    }
+    var _allowance = allowed[_from][msg.sender];
+
+    // Check is not needed because sub(_allowance, _value) will already throw if this condition is not met
+    // require (_value <= _allowance);
+
+    balances[_from] = balances[_from].sub(_value);
+    balances[_to] = balances[_to].add(_value);
+    allowed[_from][msg.sender] = _allowance.sub(_value);
+    Transfer(_from, _to, _value);
+    return true;
+  }
+
+  /**
+   * @dev Approve the passed address to spend the specified amount of tokens on behalf of msg.sender.
+   * Override StandardToken to return true/false rather than throw
+   * @param _spender The address which will spend the funds.
+   * @param _value The amount of tokens to be spent.
+   */
+  function approve(address _spender, uint256 _value) returns (bool success) {
+
+    // To change the approve amount you first have to reduce the addresses`
+    //  allowance to zero by calling `approve(_spender, 0)` if it is not
+    //  already 0 to mitigate the race condition described here:
+    //  https://github.com/ethereum/EIPs/issues/20#issuecomment-263524729
+    if ((_value == 0) || (allowed[msg.sender][_spender] == 0)) {
+      allowed[msg.sender][_spender] = _value;
+      Approval(msg.sender, _spender, _value);
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  /**
+  * @dev transfer token for a specified address
+  * Override BasicToken to return true/false rather than throw
+  * @param _to The address to transfer to.
+  * @param _value The amount to be transferred.
+  */
+  function transfer(address _to, uint256 _value) returns (bool success) {
+    if (_to == address(0)) {
+      return false;
+    }
+
+    // SafeMath.sub will throw if there is not enough balance.
+    balances[msg.sender] = balances[msg.sender].sub(_value);
+    balances[_to] = balances[_to].add(_value);
+    Transfer(msg.sender, _to, _value);
     return true;
   }
 }
