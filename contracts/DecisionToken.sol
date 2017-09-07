@@ -64,20 +64,35 @@ contract DecisionToken is MintableToken {
   // Initial HorizonState allocation (reserve)
   uint256 public constant tokenReserve = 400 * (10**6) * 10**uint256(decimals);
 
+  // Release timestamp - tokens can not be transfered before this time.
+  uint256 public releaseTime;
+
+  /**
+   * @dev modifier to allow actions only when the token can be released
+   */
+  modifier whenReleased() {
+    require(now >= releaseTime);
+    _;
+  }
+
+
   /**
   * @dev Constructor for the DecisionToken.
   * Assign the tokenReserve to Horizon State.
   */
-  function DecisionToken() MintableToken() {
+  function DecisionToken(uint256 _releaseTime) MintableToken() {
+    require(releaseTime > now);
     owner = msg.sender;
     totalSupply = tokenReserve;
     balances[owner] = totalSupply;
     Mint(owner, totalSupply);
+    releaseTime = _releaseTime;
   }
 
   /**
    * @dev Function to mint tokens
-   * Override StandardToken to return true/false rather than throw
+   * Override StandardToken to return true/false rather than throw and ad
+   * a Transfer event from 0x0 to owner.
    * @param _to The address that will receive the minted tokens.
    * @param _amount The amount of tokens to mint.
    * @return A boolean that indicates if the operation was successful.
@@ -91,29 +106,6 @@ contract DecisionToken is MintableToken {
     Mint(_to, _amount);
     Transfer(0x0, owner, _amount);
     Transfer(owner, _to, _amount);
-    return true;
-  }
-
-  /**
-   * @dev Transfer tokens from one address to another
-   * Override StandardToken to return true/false rather than throw
-   * @param _from address The address which you want to send tokens from
-   * @param _to address The address which you want to transfer to
-   * @param _value uint256 the amount of tokens to be transferred
-   */
-  function transferFrom(address _from, address _to, uint256 _value) returns (bool success) {
-    if (_to == address(0)) {
-      return false;
-    }
-    var _allowance = allowed[_from][msg.sender];
-
-    // Check is not needed because sub(_allowance, _value) will already throw if this condition is not met
-    // require (_value <= _allowance);
-
-    balances[_from] = balances[_from].sub(_value);
-    balances[_to] = balances[_to].add(_value);
-    allowed[_from][msg.sender] = _allowance.sub(_value);
-    Transfer(_from, _to, _value);
     return true;
   }
 
@@ -138,21 +130,13 @@ contract DecisionToken is MintableToken {
     }
   }
 
-  /**
-  * @dev transfer token for a specified address
-  * Override BasicToken to return true/false rather than throw
-  * @param _to The address to transfer to.
-  * @param _value The amount to be transferred.
-  */
-  function transfer(address _to, uint256 _value) returns (bool success) {
-    if (_to == address(0)) {
-      return false;
-    }
+  // @dev override the transfer() function to only work when released
+  function transfer(address _to, uint256 _value) whenReleased returns (bool) {
+    return super.transfer(_to, _value);
+  }
 
-    // SafeMath.sub will throw if there is not enough balance.
-    balances[msg.sender] = balances[msg.sender].sub(_value);
-    balances[_to] = balances[_to].add(_value);
-    Transfer(msg.sender, _to, _value);
-    return true;
+  // @dev override the transferFrom() function to only work when released
+  function transferFrom(address _from, address _to, uint256 _value) whenReleased returns (bool) {
+    return super.transferFrom(_from, _to, _value);
   }
 }

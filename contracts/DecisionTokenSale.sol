@@ -91,7 +91,7 @@ contract DecisionTokenSale is Ownable {
   // This function just creates the new DecisionToken contract, and
   // sets its owner to this contract.
   function createTokenContract() internal returns (MintableToken) {
-    return new DecisionToken();
+    return new DecisionToken(saleEnd + 7 days);
   }
 
   /// This is the function to use for buying tokens.
@@ -155,8 +155,9 @@ contract DecisionTokenSale is Ownable {
   }
 
   // @dev Allow the owner of this contract to remove a buyer from the white list.
+  // buyers may buy in the presale, i.e before the sale starts.
   function removeWhiteListedAddress(address buyer) onlyOwner returns (bool) {
-    whiteListedForPresale[buyer] = false;
+    whiteListedForPresale[buyer] = true;
     return whiteListedForPresale[buyer];
   }
 }
