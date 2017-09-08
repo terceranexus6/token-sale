@@ -27,19 +27,19 @@ contract DecisionTokenSale is Ownable {
   using SafeMath for uint256;
 
   // Sale starts at 2017-10-02T00:00:00+00:00
-  uint256 public constant saleStart = 1506902400;
+  uint32 public constant saleStart = 1506902400;
 
   // Sale ends 15 days later 2017-10-17T00:00:00+00:00
-  uint256 public constant saleEnd = saleStart + 15 days;
+  uint32 public constant saleEnd = saleStart + 15 days;
 
   // Early bird buyers receive this many tokens per ETH
-  uint256 public constant earlyBirdTokenRate = 3500;
+  uint16 public constant earlyBirdTokenRate = 3500;
 
   // Day 2-8 buyers receive this many tokens per ETH
-  uint256 public constant secondStageTokenRate = 3250;
+  uint16 public constant secondStageTokenRate = 3250;
 
   // Day 9-16 buyers receive this many tokens per ETH
-  uint256 public constant thirdStageTokenRate = 3000;
+  uint16 public constant thirdStageTokenRate = 3000;
 
   // The DecisionToken that is sold with this token sale
   MintableToken public token;
@@ -144,7 +144,7 @@ contract DecisionTokenSale is Ownable {
   // @dev Allow the owner of this contract to remove a buyer from the white list.
   // buyers may buy in the presale, i.e before the sale starts.
   function removeWhiteListedAddress(address buyer) onlyOwner returns (bool) {
-    whiteListedForPresale[buyer] = true;
+    whiteListedForPresale[buyer] = false;
     return whiteListedForPresale[buyer];
   }
 }
