@@ -1,22 +1,20 @@
 pragma solidity ^0.4.13;
 
-/**
- * Horizon State Decision Token Contract
- *
- * Version 0.9
- *
- * Author Nimo Naamani
- *
- * This smart contract code is Copyright 2017 Horizon State (https://Horizonstate.com)
- *
- * Licensed under the Apache License, version 2.0: http://www.apache.org/licenses/LICENSE-2.0
- *
- **/
-
 import "./zeppelin-solidity/contracts/token/MintableToken.sol";
 import "./zeppelin-solidity/contracts/math/SafeMath.sol";
+import "./zeppelin-solidity/contracts/ownership/Claimable.sol";
 
 /*
+* Horizon State Decision Token Contract
+*
+* Version 0.9
+*
+* Author Nimo Naamani
+*
+* This smart contract code is Copyright 2017 Horizon State (https://Horizonstate.com)
+*
+* Licensed under the Apache License, version 2.0: http://www.apache.org/licenses/LICENSE-2.0
+*
 * @title Horizon State Token
 * @dev ERC20 Decision Token (HST)
 * @author Nimo Naamani
@@ -32,7 +30,7 @@ import "./zeppelin-solidity/contracts/math/SafeMath.sol";
 * HST are mintable on demand (as they are being purchased), which means that
 * 1 Billion is the maximum.
 */
-contract DecisionToken is MintableToken {
+contract DecisionToken is MintableToken, Claimable {
 
   using SafeMath for uint256;
 
@@ -49,10 +47,10 @@ contract DecisionToken is MintableToken {
   uint8 public constant decimals = 18;
 
   // Maximum total number of tokens ever created
-  uint256 public constant tokenCap =  1000 * (10**6) * 10**uint256(decimals);
+  uint256 public constant tokenCap =  10**9 * 10**uint256(decimals);
 
   // Initial HorizonState allocation (reserve)
-  uint256 public constant tokenReserve = 400 * (10**6) * 10**uint256(decimals);
+  uint256 public constant tokenReserve = 4 * (10**8) * 10**uint256(decimals);
 
   // Release timestamp - tokens can not be transfered before this time.
   uint256 public releaseTime;
@@ -72,7 +70,7 @@ contract DecisionToken is MintableToken {
   * The contract shall assign the initial tokenReserve to Horizon State.
   */
   function DecisionToken(uint256 _releaseTime) MintableToken() {
-    require(releaseTime > now);
+    require(_releaseTime > now);
     releaseTime = _releaseTime;
     owner = msg.sender;
     totalSupply = tokenReserve;
@@ -89,4 +87,5 @@ contract DecisionToken is MintableToken {
   function transferFrom(address _from, address _to, uint256 _value) onlyWhenReleased returns (bool) {
     return super.transferFrom(_from, _to, _value);
   }
+
 }

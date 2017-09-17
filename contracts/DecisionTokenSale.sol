@@ -1,29 +1,27 @@
 pragma solidity ^0.4.13;
 
+import "./DecisionToken.sol";
+import "./zeppelin-solidity/contracts/ownership/Claimable.sol";
+import './zeppelin-solidity/contracts/token/MintableToken.sol';
+import './zeppelin-solidity/contracts/math/SafeMath.sol';
+
 /**
- * Horizon State Token Sale Contract
- *
- * Version 0.9
- *
- * Author Nimo Naamani
- *
- * This smart contract code is Copyright 2017 Horizon State (https://Horizonstate.com)
- *
- * Licensed under the Apache License, version 2.0: http://www.apache.org/licenses/LICENSE-2.0
- *
- **/
-
- import "./DecisionToken.sol";
- import "./zeppelin-solidity/contracts/ownership/Ownable.sol";
- import './zeppelin-solidity/contracts/token/MintableToken.sol';
- import './zeppelin-solidity/contracts/math/SafeMath.sol';
-
-/// @title The Decision Token Sale contract
-/// @author Nimo Naamani, Horizon state
-/// @dev A crowdsale contract with stages of tokens-per-eth based on time elapsed
-/// @dev Capped by maximum number of tokens;
-/// @dev Time constrained
-contract DecisionTokenSale is Ownable {
+* Horizon State Token Sale Contract
+*
+* Version 0.9
+*
+* Author Nimo Naamani
+*
+* This smart contract code is Copyright 2017 Horizon State (https://Horizonstate.com)
+*
+* Licensed under the Apache License, version 2.0: http://www.apache.org/licenses/LICENSE-2.0
+*
+* @title The Decision Token Sale contract
+* @author Nimo Naamani, Horizon state
+* @dev A crowdsale contract with stages of tokens-per-eth based on time elapsed
+* Capped by maximum number of tokens; Time constrained
+*/
+contract DecisionTokenSale is Claimable {
   using SafeMath for uint256;
 
   // Start timestamp where investments are open to the public.
@@ -43,13 +41,10 @@ contract DecisionTokenSale is Ownable {
   uint256 public constant thirdStageTokenRate = 3000;
 
   // The Decision Token that is sold with this token sale
-  MintableToken public token;
+  DecisionToken public token;
 
   // The address where the funds are kept
   address public wallet;
-
-  // Amount of raised money in wei
-  uint256 public weiRaised;
 
   // Holds the addresses that are whitelisted to participate in the presale.
   // Sales to these addresses are allowed before saleStart
@@ -69,16 +64,21 @@ contract DecisionTokenSale is Ownable {
   * @dev Constructor
   * @param _wallet - The wallet where the token sale proceeds are to be stored
   */
-  function DecisionTokenSale(uint256 _startTime, uint256 _endTime, MintableToken _token, address _wallet) {
-      require(_startTime >= now);
-      require(_endTime >= _startTime);
-      require(_wallet != 0x0);
-      startTime = _startTime;
-      endTime = _endTime;
-      token = _token;
-      wallet = _wallet;
-      weiRaised = 0;
+  function DecisionTokenSale(uint256 _startTime, uint256 _endTime, address _wallet) {
+    require(_startTime >= now);
+    require(_endTime >= _startTime);
+    require(_wallet != 0x0);
+    startTime = _startTime;
+    endTime = _endTime;
+    token = createTokenContract(_endTime);
+    wallet = _wallet;
   }
+
+  // @dev Creates the token to be sold.
+  function createTokenContract(uint256 _saleEnds) internal returns (DecisionToken) {
+    return new DecisionToken(_saleEnds + 10 days);
+  }
+
 
   /// This is the function to use for buying tokens.
   function buyTokens() payable {
@@ -88,10 +88,11 @@ contract DecisionTokenSale is Ownable {
     uint256 weiAmount = msg.value;
 
     // Calculate token amount to be created
-    uint256 tokens = findTokenAmount(weiAmount);
+    uint256 tokens = calculateTokenAmount(weiAmount);
 
-    // Update total wei raised
-    weiRaised = weiRaised.add(weiAmount);
+    if (token.totalSupply().add(tokens) > token.tokenCap()) {
+      revert();
+    }
 
     // Add the new tokens to the beneficiary
     token.mint(msg.sender, tokens);
@@ -120,7 +121,7 @@ contract DecisionTokenSale is Ownable {
   // Day 1     : 3500 tokens per Ether
   // Days 2-8  : 3250 tokens per Ether
   // Days 9-16 : 3000 tokens per Ether
-  function findTokenAmount(uint256 weiAmount) internal constant returns (uint256) {
+  function calculateTokenAmount(uint256 weiAmount) internal constant returns (uint256) {
     if (now >= startTime + 8 days) {
       return weiAmount.mul(thirdStageTokenRate);
     }
@@ -159,7 +160,10 @@ contract DecisionTokenSale is Ownable {
   }
 
   // @dev Allow the owner of this contract to terminate it
+  // It also transfers the token ownership.
   function destroy() onlyOwner {
+    token.finishMinting();
+    token.transferOwnership(msg.sender);
     selfdestruct(owner);
   }
 }
