@@ -30,6 +30,8 @@ import "./zeppelin-solidity/contracts/ownership/Claimable.sol";
 * HST are mintable on demand (as they are being purchased), which means that
 * 1 Billion is the maximum.
 */
+
+// @title The Horizon State Decision Token (HST)
 contract DecisionToken is MintableToken, Claimable {
 
   using SafeMath for uint256;
@@ -46,46 +48,44 @@ contract DecisionToken is MintableToken, Claimable {
   // Number of decimals for token display
   uint8 public constant decimals = 18;
 
-  // Maximum total number of tokens ever created
-  uint256 public constant tokenCap =  10**9 * 10**uint256(decimals);
+  // Release timestamp. As part of the contract, tokens can only be transfered
+  // 10 days after this trigger is set
+  uint256 public triggerTime;
 
-  // Initial HorizonState allocation (reserve)
-  uint256 public constant tokenReserve = 4 * (10**8) * 10**uint256(decimals);
-
-  // Release timestamp - tokens can not be transfered before this time.
-  uint256 public releaseTime;
-
-  /**
-   * @dev modifier to allow actions only when the token can be released
-   */
+  // @title modifier to allow actions only when the token can be released
   modifier onlyWhenReleased() {
     require(mintingFinished);
-    require(now >= releaseTime);
+    require(now >= triggerTime + 10 days);
     _;
   }
 
-  /**
-  * @dev Constructor for the DecisionToken.
-  *
-  * The contract shall assign the initial tokenReserve to Horizon State.
-  */
-  function DecisionToken(uint256 _releaseTime) MintableToken() {
-    require(_releaseTime > now);
-    releaseTime = _releaseTime;
+
+  // @dev Constructor for the DecisionToken.
+  // Initialise the trigger (the sale contract will init this to the expected end time)
+  function DecisionToken(uint256 _triggerTime) MintableToken() {
+    require(_triggerTime > now);
+    triggerTime = _triggerTime;
     owner = msg.sender;
-    totalSupply = tokenReserve;
-    balances[owner] = totalSupply;
-    Mint(owner, totalSupply);
   }
 
-  // @dev override the transfer() function to only work when released
+  // @title Transfer tokens.
+  // @dev This contract overrides the transfer() function to only work when released
   function transfer(address _to, uint256 _value) onlyWhenReleased returns (bool) {
     return super.transfer(_to, _value);
   }
 
-  // @dev override the transferFrom() function to only work when released
+  // @title Allow transfers from
+  // @dev This contract overrides the transferFrom() function to only work when released
   function transferFrom(address _from, address _to, uint256 _value) onlyWhenReleased returns (bool) {
     return super.transferFrom(_from, _to, _value);
   }
+
+  // @title finish minting of the token.
+  // @dev This contract overrides the finishMinting function to trigger the token lock countdown
+  function finishMinting() onlyOwner returns (bool) {
+    triggerTime = now;
+    return super.finishMinting();
+  }
+
 
 }
