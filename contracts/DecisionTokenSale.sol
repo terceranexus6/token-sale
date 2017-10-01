@@ -77,11 +77,11 @@ contract DecisionTokenSale is Claimable {
     require(_startTime >= now);
     require(_wallet != 0x0);
     startTime = _startTime;
-    endTime = startTime + 14 days;
+    endTime = startTime.add(14 days);
     wallet = _wallet;
 
-    // pass in the endTime, as this is the initial lock trigger time.
-    token = createTokenContract(endTime);
+    // Create the token contract itself.
+    token = createTokenContract();
 
     // Mint the reserve tokens to the owner of the sale contract.
     token.mint(owner, tokenReserve);
@@ -89,22 +89,19 @@ contract DecisionTokenSale is Claimable {
 
   // @title Create the token contract from this sale
   // @dev Creates the contract for token to be sold.
-  // @param _saleEnds : Timestamp of when the sale ends. This is used to calculate
-  // when the token can be released for excanges.
-  function createTokenContract(uint256 _saleEnds) internal returns (DecisionToken) {
-    return new DecisionToken(_saleEnds);
+  function createTokenContract() internal returns (DecisionToken) {
+    return new DecisionToken();
   }
 
   // @title Buy Decision Tokens
   // @dev Use this function to buy tokens through the sale
   function buyTokens() payable {
     require(msg.sender != 0x0);
+    require(msg.value != 0);
     require(validPurchase(msg.sender));
 
-    uint256 weiAmount = msg.value;
-
     // Calculate token amount to be created
-    uint256 tokens = calculateTokenAmount(weiAmount);
+    uint256 tokens = calculateTokenAmount(msg.value);
 
     if (token.totalSupply().add(tokens) > tokenCap) {
       revert();
@@ -114,7 +111,7 @@ contract DecisionTokenSale is Claimable {
     token.mint(msg.sender, tokens);
 
     // Notify that a token purchase was performed
-    TokenPurchase(msg.sender, weiAmount, tokens);
+    TokenPurchase(msg.sender, msg.value, tokens);
 
     // Put the funds in the token sale wallet
     wallet.transfer(msg.value);
@@ -135,8 +132,7 @@ contract DecisionTokenSale is Claimable {
   // @return true if the transaction can buy tokens
   function validPurchase(address _buyer) internal constant returns (bool) {
     bool saleHasOpenedForBuyer = whiteListedForPresale[_buyer] || now >= startTime;
-    bool nonZeroPurchase = msg.value != 0;
-    return saleHasOpenedForBuyer && !hasEnded() && nonZeroPurchase;
+    return saleHasOpenedForBuyer && !hasEnded();
   }
 
   // @title Calculate how many tokens per Ether

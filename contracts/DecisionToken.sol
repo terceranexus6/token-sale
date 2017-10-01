@@ -50,7 +50,7 @@ contract DecisionToken is MintableToken, Claimable {
 
   // Release timestamp. As part of the contract, tokens can only be transfered
   // 10 days after this trigger is set
-  uint256 public triggerTime;
+  uint256 public triggerTime = 0;
 
   // @title modifier to allow actions only when the token can be released
   modifier onlyWhenReleased() {
@@ -62,9 +62,7 @@ contract DecisionToken is MintableToken, Claimable {
 
   // @dev Constructor for the DecisionToken.
   // Initialise the trigger (the sale contract will init this to the expected end time)
-  function DecisionToken(uint256 _triggerTime) MintableToken() {
-    require(_triggerTime > now);
-    triggerTime = _triggerTime;
+  function DecisionToken() MintableToken() {
     owner = msg.sender;
   }
 
@@ -83,9 +81,8 @@ contract DecisionToken is MintableToken, Claimable {
   // @title finish minting of the token.
   // @dev This contract overrides the finishMinting function to trigger the token lock countdown
   function finishMinting() onlyOwner returns (bool) {
+    require(triggerTime==0);
     triggerTime = now;
     return super.finishMinting();
   }
-
-
 }
