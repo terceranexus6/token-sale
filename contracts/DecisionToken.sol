@@ -54,8 +54,7 @@ contract DecisionToken is MintableToken, Claimable {
 
   // @title modifier to allow actions only when the token can be released
   modifier onlyWhenReleased() {
-    require(mintingFinished);
-    require(now >= triggerTime + 10 days);
+    require(now >= triggerTime);
     _;
   }
 
@@ -82,7 +81,7 @@ contract DecisionToken is MintableToken, Claimable {
   // @dev This contract overrides the finishMinting function to trigger the token lock countdown
   function finishMinting() onlyOwner returns (bool) {
     require(triggerTime==0);
-    triggerTime = now;
+    triggerTime = now.add(10 days);
     return super.finishMinting();
   }
 }

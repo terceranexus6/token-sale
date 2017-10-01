@@ -98,7 +98,8 @@ contract DecisionTokenSale is Claimable {
   function buyTokens() payable {
     require(msg.sender != 0x0);
     require(msg.value != 0);
-    require(validPurchase(msg.sender));
+    require(whiteListedForPresale[msg.sender] || now >= startTime);
+    require(!hasEnded());
 
     // Calculate token amount to be created
     uint256 tokens = calculateTokenAmount(msg.value);
@@ -122,19 +123,6 @@ contract DecisionTokenSale is Claimable {
     buyTokens();
   }
 
-  // @title Figure out whether a purchase request is valid
-  // @dev An internal function to check whether a purchase is valid.
-  // A purchase is deemed valid when all the following are true
-  // 1) The current time is on/after startTime OR the user us whiteListed
-  // 2) The purchase is non-zero wei
-  // 3) The sale has not ended.
-  // @param _buyer : The address of the buyer wanting to purchase tokens.
-  // @return true if the transaction can buy tokens
-  function validPurchase(address _buyer) internal constant returns (bool) {
-    bool saleHasOpenedForBuyer = whiteListedForPresale[_buyer] || now >= startTime;
-    return saleHasOpenedForBuyer && !hasEnded();
-  }
-
   // @title Calculate how many tokens per Ether
   // The token sale has different rates based on time of purchase, as per the token
   // sale whitepaper and Horizon State's Token Sale page.
@@ -142,7 +130,12 @@ contract DecisionTokenSale is Claimable {
   // Day 1     : 3500 tokens per Ether
   // Days 2-8  : 3250 tokens per Ether
   // Days 9-16 : 3000 tokens per Ether
-  // @param weiAmount : How much wei the buyer wants to spend on tokens
+  //
+  // A note for calculation: As the number of decimals on the token is 18, which
+  // is identical to the wei per eth - the calculation performed here can use the
+  // number of tokens per ETH with no further modification.
+  //
+  // @param _weiAmount : How much wei the buyer wants to spend on tokens
   // @return the number of tokens for this purchase.
   function calculateTokenAmount(uint256 _weiAmount) internal constant returns (uint256) {
     if (now >= startTime + 8 days) {
